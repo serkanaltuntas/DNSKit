@@ -17,9 +17,23 @@ const (
 )
 
 var (
-	activeTabStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true).BorderBottom(true).BorderStyle(lipgloss.NormalBorder()).BorderForeground(lipgloss.Color("6")).Padding(0, 2)
-	inactiveTabStyle = lipgloss.NewStyle().Faint(true).Padding(0, 2)
-	helpStyle        = lipgloss.NewStyle().Faint(true)
+	activeTabStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("0")).
+			Background(lipgloss.Color("6")).
+			Bold(true).
+			Padding(0, 2)
+
+	inactiveTabStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("7")).
+				Background(lipgloss.Color("8")).
+				Padding(0, 2)
+
+	tabSeparator = lipgloss.NewStyle().
+			Faint(true).
+			Padding(0, 1).
+			Render("│")
+
+	helpStyle = lipgloss.NewStyle().Faint(true)
 )
 
 type model struct {
@@ -108,15 +122,16 @@ func (m model) View() string {
 
 	// Tab bar
 	tabs := []string{"DNS Records", "Propagation"}
-	var renderedTabs []string
 	for i, t := range tabs {
+		if i > 0 {
+			b.WriteString(tabSeparator)
+		}
 		if tabIndex(i) == m.activeTab {
-			renderedTabs = append(renderedTabs, activeTabStyle.Render(t))
+			b.WriteString(activeTabStyle.Render(t))
 		} else {
-			renderedTabs = append(renderedTabs, inactiveTabStyle.Render(t))
+			b.WriteString(inactiveTabStyle.Render(t))
 		}
 	}
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Bottom, renderedTabs...))
 	b.WriteString("\n")
 
 	// Viewport content
