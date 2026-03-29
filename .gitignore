@@ -1,0 +1,33 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+dnskit
+
+# Test binary
+*.test
+
+# Output of go coverage
+*.out
+*.prof
+
+# Build output
+/bin/
+/dist/
+
+# Dependency directories
+/vendor/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
+.env
+.env.local
