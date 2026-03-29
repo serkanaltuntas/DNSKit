@@ -9,12 +9,13 @@ import (
 )
 
 var (
-	cyanBold  = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
-	greenBold = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true)
-	yellowFg  = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
-	dimStyle  = lipgloss.NewStyle().Faint(true)
-	boldStyle = lipgloss.NewStyle().Bold(true)
-	redBold   = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
+	cyanBold      = lipgloss.NewStyle().Foreground(lipgloss.Color("6")).Bold(true)
+	greenBold     = lipgloss.NewStyle().Foreground(lipgloss.Color("2")).Bold(true)
+	yellowFg      = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
+	dimStyle      = lipgloss.NewStyle().Faint(true)
+	boldStyle     = lipgloss.NewStyle().Bold(true)
+	redBold       = lipgloss.NewStyle().Foreground(lipgloss.Color("1")).Bold(true)
+	providerStyle = lipgloss.NewStyle().Faint(true)
 )
 
 const viewWidth = 64
@@ -79,6 +80,14 @@ func kvLine(key, value string) string {
 	return yellowFg.Render(fmt.Sprintf("    %-16s", key)) + value + "\n"
 }
 
+func providerSuffix(hostname string) string {
+	label := dns.ProviderLabel(hostname)
+	if label == "" {
+		return ""
+	}
+	return "  " + providerStyle.Render(label)
+}
+
 func renderRecordsTab(rs *dns.RecordSet, server string) string {
 	var b strings.Builder
 
@@ -112,6 +121,9 @@ func renderRecordsTab(rs *dns.RecordSet, server string) string {
 		b.WriteString(tableHeader(w2, []string{"Target", "TTL"}))
 		for _, r := range rs.CNAME {
 			b.WriteString(tableDataRow(w2, []string{r.Target, dns.FormatTTL(r.TTL)}))
+			if ps := providerSuffix(r.Target); ps != "" {
+				b.WriteString("    " + ps + "\n")
+			}
 		}
 	}
 
@@ -120,6 +132,9 @@ func renderRecordsTab(rs *dns.RecordSet, server string) string {
 		b.WriteString(tableHeader(w3, []string{"Host", "Priority", "TTL"}))
 		for _, r := range rs.MX {
 			b.WriteString(tableDataRow(w3, []string{r.Host, fmt.Sprintf("%d", r.Preference), dns.FormatTTL(r.TTL)}))
+			if ps := providerSuffix(r.Host); ps != "" {
+				b.WriteString("    " + ps + "\n")
+			}
 		}
 	}
 
@@ -128,6 +143,9 @@ func renderRecordsTab(rs *dns.RecordSet, server string) string {
 		b.WriteString(tableHeader(w2, []string{"Nameserver", "TTL"}))
 		for _, r := range rs.NS {
 			b.WriteString(tableDataRow(w2, []string{r.Nameserver, dns.FormatTTL(r.TTL)}))
+			if ps := providerSuffix(r.Nameserver); ps != "" {
+				b.WriteString("    " + ps + "\n")
+			}
 		}
 	}
 
@@ -142,7 +160,11 @@ func renderRecordsTab(rs *dns.RecordSet, server string) string {
 	if len(rs.SOA) > 0 {
 		b.WriteString(sectionHeader("SOA", 0))
 		for _, r := range rs.SOA {
-			b.WriteString(kvLine("Primary NS", r.PrimaryNS))
+			nsLabel := r.PrimaryNS
+			if ps := providerSuffix(r.PrimaryNS); ps != "" {
+				nsLabel += ps
+			}
+			b.WriteString(kvLine("Primary NS", nsLabel))
 			b.WriteString(kvLine("Mailbox", r.Mailbox))
 			b.WriteString(kvLine("Serial", fmt.Sprintf("%d", r.Serial)))
 			b.WriteString(kvLine("Refresh", dns.FormatTTL(r.Refresh)))
@@ -159,6 +181,9 @@ func renderRecordsTab(rs *dns.RecordSet, server string) string {
 		b.WriteString(tableHeader(ws, []string{"Target", "Port", "Priority", "Weight", "TTL"}))
 		for _, r := range rs.SRV {
 			b.WriteString(tableDataRow(ws, []string{r.Target, fmt.Sprintf("%d", r.Port), fmt.Sprintf("%d", r.Priority), fmt.Sprintf("%d", r.Weight), dns.FormatTTL(r.TTL)}))
+			if ps := providerSuffix(r.Target); ps != "" {
+				b.WriteString("    " + ps + "\n")
+			}
 		}
 	}
 
