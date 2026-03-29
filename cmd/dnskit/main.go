@@ -68,9 +68,16 @@ func main() {
 		os.Exit(1)
 	}
 
-	pr := <-pCh
+	// Fetch geolocation for IPs (runs in background while propagation finishes).
+	geoCh := make(chan []dns.GeoLocation, 1)
+	go func() {
+		geoCh <- dns.LookupGeoAll(ctx, rr.rs)
+	}()
 
-	m := newModel(rr.rs, pr.report, *server)
+	pr := <-pCh
+	geoData := <-geoCh
+
+	m := newModel(rr.rs, pr.report, geoData, *server)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)

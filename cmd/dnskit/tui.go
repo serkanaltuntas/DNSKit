@@ -14,6 +14,8 @@ type tabIndex int
 const (
 	recordsTab     tabIndex = 0
 	propagationTab tabIndex = 1
+	mapTab         tabIndex = 2
+	tabCount                = 3
 )
 
 var (
@@ -41,17 +43,19 @@ type model struct {
 	viewport    viewport.Model
 	records     *dns.RecordSet
 	propagation *dns.PropagationReport
+	geoData     []dns.GeoLocation
 	server      string
 	ready       bool
 	width       int
 	height      int
 }
 
-func newModel(rs *dns.RecordSet, report *dns.PropagationReport, server string) model {
+func newModel(rs *dns.RecordSet, report *dns.PropagationReport, geoData []dns.GeoLocation, server string) model {
 	return model{
 		activeTab:   recordsTab,
 		records:     rs,
 		propagation: report,
+		geoData:     geoData,
 		server:      server,
 	}
 }
@@ -69,11 +73,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "ctrl+c":
 			return m, tea.Quit
 		case "tab", "right", "l":
-			m.activeTab = (m.activeTab + 1) % 2
+			m.activeTab = (m.activeTab + 1) % tabCount
 			m.updateViewportContent()
 			return m, nil
 		case "shift+tab", "left", "h":
-			m.activeTab = (m.activeTab + 2 - 1) % 2
+			m.activeTab = (m.activeTab + tabCount - 1) % tabCount
 			m.updateViewportContent()
 			return m, nil
 		}
@@ -81,7 +85,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
-		vpHeight := m.height - 3 // tab bar + separator + help line
+		vpHeight := m.height - 3
 
 		if !m.ready {
 			m.viewport = viewport.New(m.width, vpHeight)
@@ -109,6 +113,8 @@ func (m *model) updateViewportContent() {
 		} else {
 			m.viewport.SetContent("\n  No propagation data available.\n")
 		}
+	case mapTab:
+		m.viewport.SetContent(renderMapTab(m.geoData, m.records.Domain))
 	}
 	m.viewport.GotoTop()
 }
@@ -120,8 +126,8 @@ func (m model) View() string {
 
 	var b strings.Builder
 
-	// Tab bar
-	tabs := []string{"DNS Records", "Propagation"}
+	// Tab bar.
+	tabs := []string{"DNS Records", "Propagation", "Map"}
 	for i, t := range tabs {
 		if i > 0 {
 			b.WriteString(tabSeparator)
@@ -134,11 +140,11 @@ func (m model) View() string {
 	}
 	b.WriteString("\n")
 
-	// Viewport content
+	// Viewport content.
 	b.WriteString(m.viewport.View())
 	b.WriteString("\n")
 
-	// Help line
+	// Help line.
 	b.WriteString(helpStyle.Render("  tab: switch tabs \u2022 \u2191/\u2193: scroll \u2022 q: quit"))
 
 	return b.String()
