@@ -98,11 +98,21 @@ func (r *Resolver) query(ctx context.Context, fqdn string, qtype uint16) ([]mdns
 	msg := new(mdns.Msg)
 	msg.SetQuestion(fqdn, qtype)
 	msg.RecursionDesired = true
+	msg.SetEdns0(4096, false)
 
 	client := &mdns.Client{Timeout: r.Timeout}
 	resp, _, err := client.ExchangeContext(ctx, msg, r.Server)
 	if err != nil {
 		return nil, err
+	}
+
+	// Retry over TCP if the UDP response was truncated.
+	if resp.Truncated {
+		tcpClient := &mdns.Client{Timeout: r.Timeout, Net: "tcp"}
+		resp, _, err = tcpClient.ExchangeContext(ctx, msg, r.Server)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	switch resp.Rcode {

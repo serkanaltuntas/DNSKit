@@ -120,6 +120,63 @@ func TestEstimate_NoRecords(t *testing.T) {
 	}
 }
 
+func TestEstimate_AnycastAllUnique(t *testing.T) {
+	// When every resolver returns a different IP (anycast/load-balanced),
+	// no propagation issue exists — all values are valid.
+	results := []PropagationResult{
+		{Resolver: ResolverInfo{Name: "Google"}, Records: &RecordSet{
+			A: []ARecord{{Address: "172.217.22.238", TTL: 203}},
+		}},
+		{Resolver: ResolverInfo{Name: "Cloudflare"}, Records: &RecordSet{
+			A: []ARecord{{Address: "172.217.18.174", TTL: 172}},
+		}},
+		{Resolver: ResolverInfo{Name: "Quad9"}, Records: &RecordSet{
+			A: []ARecord{{Address: "172.217.23.142", TTL: 55}},
+		}},
+		{Resolver: ResolverInfo{Name: "OpenDNS"}, Records: &RecordSet{
+			A: []ARecord{{Address: "192.178.24.14", TTL: 300}},
+		}},
+	}
+
+	est := Estimate(results, "A")
+	if est.Status != FullyPropagated {
+		t.Errorf("expected FullyPropagated for anycast (all unique), got %d", est.Status)
+	}
+	if est.Updated != 4 {
+		t.Errorf("expected 4 updated, got %d", est.Updated)
+	}
+	if len(est.Remaining) != 0 {
+		t.Errorf("expected 0 remaining, got %d", len(est.Remaining))
+	}
+}
+
+func TestEstimate_AnycastPartialOverlap(t *testing.T) {
+	// 2 resolvers agree, 2 have unique values (2+1+1 pattern).
+	// No strict majority — still anycast, not propagation delay.
+	results := []PropagationResult{
+		{Resolver: ResolverInfo{Name: "Google"}, Records: &RecordSet{
+			AAAA: []AAAARecord{{Address: "2a00:1450:4017:812::200e", TTL: 289}},
+		}},
+		{Resolver: ResolverInfo{Name: "Cloudflare"}, Records: &RecordSet{
+			AAAA: []AAAARecord{{Address: "2a00:1450:4017:812::200e", TTL: 105}},
+		}},
+		{Resolver: ResolverInfo{Name: "Quad9"}, Records: &RecordSet{
+			AAAA: []AAAARecord{{Address: "2a00:1450:4017:815::200e", TTL: 178}},
+		}},
+		{Resolver: ResolverInfo{Name: "OpenDNS"}, Records: &RecordSet{
+			AAAA: []AAAARecord{{Address: "2a00:1450:4017:81f::200e", TTL: 300}},
+		}},
+	}
+
+	est := Estimate(results, "AAAA")
+	if est.Status != FullyPropagated {
+		t.Errorf("expected FullyPropagated for anycast (2+1+1), got %d", est.Status)
+	}
+	if est.Updated != 4 {
+		t.Errorf("expected 4 updated, got %d", est.Updated)
+	}
+}
+
 func TestRecordTypes(t *testing.T) {
 	types := RecordTypes()
 	if len(types) != 10 {

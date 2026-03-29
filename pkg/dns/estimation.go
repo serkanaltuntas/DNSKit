@@ -179,6 +179,15 @@ func Estimate(results []PropagationResult, recordType string) Estimation {
 		return est
 	}
 
+	// When no strict majority exists (no fingerprint held by more than half
+	// the resolvers), the differences are likely anycast / load-balanced
+	// responses rather than stale caches. Treat as fully propagated.
+	if majorityCount*2 <= len(entries) {
+		est.Status = FullyPropagated
+		est.Updated = len(entries)
+		return est
+	}
+
 	est.Status = InProgress
 	for _, e := range entries {
 		if e.fingerprint != majorityFP {
